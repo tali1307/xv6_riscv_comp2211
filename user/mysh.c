@@ -90,10 +90,12 @@ void parse_input(struct command *cmd, struct redirect_command *red_cmd, struct p
                 strcpy(pipe_cmd->left[j], cmd->argv[j]);
                 pipe_cmd->argl++;
             }
+            int r = 0;
             for (int k = i+1; k < cmd->argc; k++) {
                 pipe_cmd->right[pipe_cmd->argr] = (char*) malloc (sizeof(cmd->argv[k]));
-                strcpy(pipe_cmd->right[k], cmd->argv[k]);
+                strcpy(pipe_cmd->right[r], cmd->argv[k]);
                 pipe_cmd->argr++;
+                r++;
             }
         }
     }
@@ -103,20 +105,22 @@ void parse_input(struct command *cmd, struct redirect_command *red_cmd, struct p
         for (int  i = 0; i < red_cmd->redirect_argc; i++) {
             printf("redirect_argv at %d is %s\n", i, red_cmd->redirect_argv[i]);
         }
-
         printf("redirect_argc is %d\n", red_cmd->redirect_argc);
 
     printf("\n*********** TESTING PIPES ***********\n");
 
-        for (int  i = 0; i < red_cmd->redirect_argc; i++) {
-            printf("redirect_argv at %d is %s\n", i, red_cmd->redirect_argv[i]);
+        for (int  i = 0; i < pipe_cmd->argl; i++) {
+            printf("left at %d is %s\n", i, pipe_cmd->left[i]);
         }
-
-        printf("redirect_argc is %d\n", red_cmd->redirect_argc);
+        printf("argl is %d\n", pipe_cmd->argl);
+        for (int  i = 0; i < pipe_cmd->argr; i++) {
+            printf("right at %d is %s\n", i, pipe_cmd->right[i]);
+        }
+        printf("argr is %d\n", pipe_cmd->argr);
 }
 
 // handles simple I/O redirection
-void redirect(struct command *cmd, struct temp_command *t_cmd) {
+void redirect(struct command *cmd, struct redirect_command *t_cmd) {
     for (int i = 0; i < cmd->argc; i++) {
         if (strcmp(cmd->argv[i], "<") == 0) {
             if (fork() == 0) {
@@ -145,23 +149,23 @@ void pipes(struct command *cmd, struct pipe_command *pipe_cmd) {
     int p[2];
     pipe(p);
     if (fork() == 0) { //lhs write
-        close(p[0]);
+        close(p[STDIN]);
         close(STDOUT);
         dup(p[STDOUT]);
-        exec(pipe_cmd->left[0], pipe_cmd->left);
         close(p[STDOUT]);
-    } else {
-        wait(0);
+        exec(pipe_cmd->left[0], pipe_cmd->left);
     }
     if (fork() == 0) { //rhs read
         close(STDIN);
         close(p[STDOUT]);
         dup(p[STDIN]);
-        exec(pipe_cmd->right[0], pipe_cmd->right);
         close(p[STDIN]);
-    } else {
-        wait(0);
+        exec(pipe_cmd->right[0], pipe_cmd->right);
     }
+    close(p[STDIN]);
+    close(p[STDOUT]);
+    wait(0);
+    wait(0);
 }
 
 //parsing the user input for simple commands
@@ -211,7 +215,7 @@ int main() {
 
     while (exit_flag != -1) {
         exit_flag = 0;
-        int redir_counter = 0;
+        //int redir_counter = 0;
 
         printf("\n%s>>> ", working_directory);
 
@@ -222,7 +226,6 @@ int main() {
         for (int  i = 0; i < cmd->argc; i++) {
             printf("argv at %d is %s\n", i, cmd->argv[i]);
         }
-
         printf("argc is %d\n", cmd->argc);
 
         parse_input(cmd, red_cmd, pipe_cmd);
