@@ -10,7 +10,6 @@
 #define MAX_INPUT 100 // max length of a user-entered string/command
 
 int exit_flag; //terminates mysh
-char working_directory[50];
 
 struct command {
     char *argv[MAX_INPUT];
@@ -70,21 +69,26 @@ void read_input(struct command *cmd) {
             strcpy(cmd->argv[cmd->argc], temp);
             cmd->argc++;
             count = 0;
-            if (current_char== '\n') {
+            if (current_char == '\n') {
                 break;
             }
         }
     }
+    cmd->argv[cmd->argc] = (char*) malloc (sizeof(0x0));
+    cmd->argv[cmd->argc] = 0x0;
     printf("********** read_input executed ***************\n");
 }
 
 void parse_input(struct command *cmd, struct redirect_command *red_cmd, struct pipe_command *pipe_cmd) {
-    for (int i = 0; i < cmd->argc; i++) {
+    for (int i = 0; i < cmd->argc-1; i++) {
         if (strcmp(cmd->argv[i], "<") != 0 && strcmp(cmd->argv[i], ">") != 0 && strcmp(cmd->argv[i], "|") != 0) {
             red_cmd->redirect_argv[red_cmd->redirect_argc] = (char*) malloc (sizeof(cmd->argv[i]));
             strcpy(red_cmd->redirect_argv[red_cmd->redirect_argc], cmd->argv[i]);
             red_cmd->redirect_argc++;
-        } else if (strcmp(cmd->argv[i], "|") == 0) {
+        } 
+    }
+    for (int i = 0; i < cmd->argc; i++) {
+        if (strcmp(cmd->argv[i], "|") == 0) {
             for (int j = 0; j < i; j++) {
                 pipe_cmd->left[pipe_cmd->argl] = (char*) malloc (sizeof(cmd->argv[j]));
                 strcpy(pipe_cmd->left[j], cmd->argv[j]);
@@ -98,6 +102,12 @@ void parse_input(struct command *cmd, struct redirect_command *red_cmd, struct p
                 r++;
             }
         }
+        red_cmd->redirect_argv[red_cmd->redirect_argc] = (char*) malloc (sizeof(cmd->argv[0x0]));
+        red_cmd->redirect_argv[red_cmd->redirect_argc] = 0x0;
+        pipe_cmd->left[pipe_cmd->argl] = (char*) malloc (sizeof(0x0));
+        pipe_cmd->left[pipe_cmd->argl] = 0x0;
+        pipe_cmd->right[pipe_cmd->argr] = (char*) malloc (sizeof(0x0));
+        pipe_cmd->right[pipe_cmd->argr] = 0x0;
     }
 
     printf("\n*********** TESTING REDIRECT ***********\n");
@@ -125,18 +135,18 @@ void redirect(struct command *cmd, struct redirect_command *t_cmd) {
         if (strcmp(cmd->argv[i], "<") == 0) {
             if (fork() == 0) {
                 close(STDIN);
-                open(cmd->argv[cmd->argc-1], O_RDONLY);
+                int fd = open(cmd->argv[cmd->argc-1], O_RDONLY);
                 exec(cmd->argv[0], red_cmd->redirect_argv);
-                exit(0);
+                close(fd);
             } else {
                 wait(0);
             }
         } else if (strcmp(cmd->argv[i], ">") == 0) {
             if (fork() == 0) {
                 close(STDOUT);
-                open(cmd->argv[cmd->argc-1], O_CREATE | O_WRONLY);
+                int fd = open(cmd->argv[cmd->argc-1], O_CREATE | O_WRONLY);
                 exec(cmd->argv[0], red_cmd->redirect_argv);
-                exit(0);
+                close(fd);
             }
             else {
                 wait(0);
@@ -145,7 +155,7 @@ void redirect(struct command *cmd, struct redirect_command *t_cmd) {
     }
 }
 
-void pipes(struct command *cmd, struct pipe_command *pipe_cmd) {
+void pipes(struct pipe_command *pipe_cmd) {
     int p[2];
     pipe(p);
     if (fork() == 0) { //lhs write
@@ -168,7 +178,28 @@ void pipes(struct command *cmd, struct pipe_command *pipe_cmd) {
     wait(0);
 }
 
-//parsing the user input for simple commands
+/*void multi_pipes() {
+    ls | cat | cat | cat
+    int indices[20];
+    int p[2];
+    int index = 0;
+    int in = STDIN; //this is our input for the next child
+    int out = STDOUT; //output for each child
+    int n = cmd->argc;
+    for (int i = 0; i < n; i++) {
+        if (strcmp(cmd->argv[i], "|") == 0) {
+            indices[index] = i;
+            index++;
+        }
+    }
+    int index2 = 0;
+    for (int i = 0; i < cmd->argc; i++) 
+        if (i == indices[index2]) 
+    
+}*/
+
+
+//executing the user input for simple commands
 void exec_input(struct command *cmd) {
     if(strcmp(cmd->argv[0], "cd") != 0 && strcmp(cmd->argv[0], "exit") != 0) {
         if (fork() == 0) {
@@ -180,21 +211,8 @@ void exec_input(struct command *cmd) {
             wait(0);
         }
     } else if (strcmp(cmd->argv[0], "cd") == 0) {
-        if (fork() == 0) {
-            printf("Child is running...changing directories...\n");
-            exit(0);
-            
-        } else {
-            wait(0);
-            if (strcmp(cmd->argv[1], "../") != 0) {
-                strcpy(working_directory, cmd->argv[1]); //if working_directory doesn't change, parent didn't execute
-            } else {
-                strcpy(working_directory, "mysh");
-            }
-            printf("Moved to %s \n", cmd->argv[1]);
-            //chdir(cmd->argv[1]);
-            exec("chdir", cmd->argv);
-        } 
+        printf("Moved to %s \n", cmd->argv[1]);
+        chdir(cmd->argv[1]);
     } else if (strcmp(cmd->argv[0], "exit") == 0) {
         printf("Exiting mysh...\n");
         exit_flag = -1;
@@ -211,13 +229,12 @@ int main() {
     red_cmd->redirect_argc = 0;
     pipe_cmd->argl = 0;
     pipe_cmd->argr = 0;
-    strcpy(working_directory, "mysh");
 
     while (exit_flag != -1) {
         exit_flag = 0;
-        //int redir_counter = 0;
+        int redir_counter = 0;
 
-        printf("\n%s>>> ", working_directory);
+        printf("\n>>> ");
 
         read_input(cmd);
 
@@ -230,9 +247,11 @@ int main() {
 
         parse_input(cmd, red_cmd, pipe_cmd);
 
-        pipes(cmd, pipe_cmd);
+        //multi_pipes();
 
-        /*for (int  i = 0; i < cmd->argc; i++) {
+        //pipes(pipe_cmd);
+
+        for (int  i = 0; i < cmd->argc; i++) {
             if (strcmp(cmd->argv[i], "<") == 0 || strcmp(cmd->argv[i], ">") == 0) {
                 redir_counter++;
             }
@@ -244,7 +263,7 @@ int main() {
         } else {
             printf("********** main() parsing... ***************\n");
             exec_input(cmd);      
-        }*/
+        }
 
         cleanup();
     }
