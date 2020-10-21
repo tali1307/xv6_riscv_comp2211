@@ -232,8 +232,8 @@ int main() {
 
     while (exit_flag != -1) {
         exit_flag = 0;
-        int redir_counter = 0;
-
+        int pipecommand = 0;
+        int redirectcommand = 0;
         printf("\n>>> ");
 
         read_input(cmd);
@@ -245,26 +245,27 @@ int main() {
         }
         printf("argc is %d\n", cmd->argc);
 
-        parse_input(cmd, red_cmd, pipe_cmd);
-
         //multi_pipes();
 
-        //pipes(pipe_cmd);
-
-        for (int  i = 0; i < cmd->argc; i++) {
-            if (strcmp(cmd->argv[i], "<") == 0 || strcmp(cmd->argv[i], ">") == 0) {
-                redir_counter++;
+        for (int i = 0; i < cmd->argc; i++) {
+            if ((strcmp(cmd->argv[i], "<") == 0 || strcmp(cmd->argv[i], ">") == 0) && strcmp(cmd->argv[i], "|") != 0) {
+                redirectcommand++;
+                
+            } else if (strcmp(cmd->argv[i], "|") == 0) {
+                pipecommand++;
             }
         }
-
-        if (redir_counter > 0) {
-            printf("********** redirect executed ***************\n");
-            redirect(cmd, red_cmd);
-        } else {
-            printf("********** main() parsing... ***************\n");
-            exec_input(cmd);      
+        if(redirectcommand>0) {
+            parse_input(cmd, red_cmd, pipe_cmd);
+             redirect(cmd, red_cmd);
         }
-
+        else if(pipecommand>0) {
+                parse_input(cmd, red_cmd, pipe_cmd);
+                pipes(pipe_cmd);
+        }
+        else{
+            exec_input(cmd);
+        }
         cleanup();
     }
     exit(0);
