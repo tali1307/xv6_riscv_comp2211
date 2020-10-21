@@ -223,15 +223,17 @@ void exec_input(struct command *cmd) {
 
 void chains(struct command *cmd, struct command *chain_cmd) {
     chain_cmd->argc = 0;
-    for(int i = 0; i < cmd->argc; i++) {
-        if(strcmp(cmd->argv[i], ";") != 0) {
+    for(int i = 0; i <= cmd->argc; i++) {
+        if(strcmp(cmd->argv[i], ";") != 0 && cmd->argv[i] != 0x0) {
             chain_cmd->argv[chain_cmd->argc] = (char *) malloc (sizeof(cmd->argv[i]));
             strcpy(chain_cmd->argv[chain_cmd->argc], cmd->argv[i]);
             chain_cmd->argc++;
-        } else {
+        } else if (strcmp(cmd->argv[i], ";") == 0 || cmd->argv[i] == 0x0) {
+            chain_cmd->argv[chain_cmd->argc] = (char *) malloc (sizeof(0x0));
+            chain_cmd->argv[chain_cmd->argc] = 0x0;
             exec_input(chain_cmd); //executes simple commands
             for(int j = 0; j < chain_cmd->argc; j++) {
-                printf("%s\n", chain_cmd->argv[j]);
+                //printf("%s\n", chain_cmd->argv[j]);
                 free(chain_cmd->argv[j]);
             }
             chain_cmd->argc = 0;
@@ -287,7 +289,7 @@ int main() {
                 pipes(pipe_cmd);
         }
         else if(chaincommand>0) {
-            printf("hello chain\n");
+            //printf("hello chain\n");
             chains(cmd, chain_cmd);
         }
         else{
