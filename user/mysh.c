@@ -28,9 +28,15 @@ struct pipe_command {
     int argr;
 };
 
+struct chain_command {
+    char *chain_argv[MAX_INPUT];
+    int chain_argc;
+};
+
 struct command *cmd, cmd1;
 struct redirect_command *red_cmd, red_cmd1;
 struct pipe_command *pipe_cmd, pipe_cmd1;
+//struct chain_command *chain_cmd, chain_cmd1;
 
 void cleanup() {
     for(int i = 0; i < cmd->argc; i++) {
@@ -76,7 +82,7 @@ void read_input(struct command *cmd) {
     }
     cmd->argv[cmd->argc] = (char*) malloc (sizeof(0x0));
     cmd->argv[cmd->argc] = 0x0;
-    printf("********** read_input executed ***************\n");
+    //printf("********** read_input executed ***************\n");
 }
 
 void parse_input(struct command *cmd, struct redirect_command *red_cmd, struct pipe_command *pipe_cmd) {
@@ -110,7 +116,7 @@ void parse_input(struct command *cmd, struct redirect_command *red_cmd, struct p
         pipe_cmd->right[pipe_cmd->argr] = 0x0;
     }
 
-    printf("\n*********** TESTING REDIRECT ***********\n");
+    /*printf("\n*********** TESTING REDIRECT ***********\n");
 
         for (int  i = 0; i < red_cmd->redirect_argc; i++) {
             printf("redirect_argv at %d is %s\n", i, red_cmd->redirect_argv[i]);
@@ -127,6 +133,7 @@ void parse_input(struct command *cmd, struct redirect_command *red_cmd, struct p
             printf("right at %d is %s\n", i, pipe_cmd->right[i]);
         }
         printf("argr is %d\n", pipe_cmd->argr);
+    */
 }
 
 // handles simple I/O redirection
@@ -203,7 +210,7 @@ void pipes(struct pipe_command *pipe_cmd) {
 void exec_input(struct command *cmd) {
     if(strcmp(cmd->argv[0], "cd") != 0 && strcmp(cmd->argv[0], "exit") != 0) {
         if (fork() == 0) {
-            printf("*********** PARSE %s executed ***************\n", cmd->argv[0]);
+            //printf("*********** EXEC_SIMPLE %s executed ***************\n", cmd->argv[0]);
             if (exec(cmd->argv[0], cmd->argv) == -1) {
                 printf("Error: %s could not be executed.\n", cmd->argv[0]);
             }
@@ -211,24 +218,36 @@ void exec_input(struct command *cmd) {
             wait(0);
         }
     } else if (strcmp(cmd->argv[0], "cd") == 0) {
-        printf("Moved to %s \n", cmd->argv[1]);
+        //printf("Moved to %s \n", cmd->argv[1]);
         chdir(cmd->argv[1]);
     } else if (strcmp(cmd->argv[0], "exit") == 0) {
-        printf("Exiting mysh...\n");
+        //printf("Exiting mysh...\n");
         exit_flag = -1;
-        printf("*********** PARSE %s executed ***************\n", cmd->argv[0]);
+        //printf("*********** EXEC_SIMPLE %s executed ***************\n", cmd->argv[0]);
     }
 }
+
+/*void chains(struct command *cmd) {
+    for(int i = 0; i < cmd->argc; i++) {
+        if(strcmp(cmd->argv[i], ";") != 0) {
+            chain_cmd->chain_argv[chain_cmd->chain_argc] = (char *) malloc (sizeof(cmd->argv[i]));
+            strcpy(chain_cmd->chain_argv[chain_cmd->chain_argc], cmd->argv[i]);
+            chain_cmd->chain_argc++;
+        }
+    }
+}*/
 
 int main() {
 
     cmd = &cmd1;
     red_cmd = &red_cmd1;
     pipe_cmd = &pipe_cmd1;
+    //chain_cmd = &chain_cmd1;
     cmd->argc = 0;
     red_cmd->redirect_argc = 0;
     pipe_cmd->argl = 0;
     pipe_cmd->argr = 0;
+    //chain_cmd->chain_argc = 0;
 
     while (exit_flag != -1) {
         exit_flag = 0;
@@ -237,14 +256,14 @@ int main() {
         printf("\n>>> ");
 
         read_input(cmd);
-
+        /*
         printf("\n*********** TESTING READING ***********\n");
 
         for (int  i = 0; i < cmd->argc; i++) {
             printf("argv at %d is %s\n", i, cmd->argv[i]);
         }
         printf("argc is %d\n", cmd->argc);
-
+        */
         //multi_pipes();
 
         for (int i = 0; i < cmd->argc; i++) {
