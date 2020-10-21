@@ -28,15 +28,9 @@ struct pipe_command {
     int argr;
 };
 
-struct chain_command {
-    char *chain_argv[MAX_INPUT];
-    int chain_argc;
-};
-
-struct command *cmd, cmd1;
+struct command *cmd, cmd1, *chain_cmd, chain_cmd1;
 struct redirect_command *red_cmd, red_cmd1;
 struct pipe_command *pipe_cmd, pipe_cmd1;
-//struct chain_command *chain_cmd, chain_cmd1;
 
 void cleanup() {
     for(int i = 0; i < cmd->argc; i++) {
@@ -227,32 +221,40 @@ void exec_input(struct command *cmd) {
     }
 }
 
-/*void chains(struct command *cmd) {
+void chains(struct command *cmd, struct command *chain_cmd) {
+    chain_cmd->argc = 0;
     for(int i = 0; i < cmd->argc; i++) {
         if(strcmp(cmd->argv[i], ";") != 0) {
-            chain_cmd->chain_argv[chain_cmd->chain_argc] = (char *) malloc (sizeof(cmd->argv[i]));
-            strcpy(chain_cmd->chain_argv[chain_cmd->chain_argc], cmd->argv[i]);
-            chain_cmd->chain_argc++;
+            chain_cmd->argv[chain_cmd->argc] = (char *) malloc (sizeof(cmd->argv[i]));
+            strcpy(chain_cmd->argv[chain_cmd->argc], cmd->argv[i]);
+            chain_cmd->argc++;
+        } else {
+            exec_input(chain_cmd); //executes simple commands
+            for(int j = 0; j < chain_cmd->argc; j++) {
+                printf("%s\n", chain_cmd->argv[j]);
+                free(chain_cmd->argv[j]);
+            }
+            chain_cmd->argc = 0;
         }
     }
-}*/
+}
 
 int main() {
 
     cmd = &cmd1;
     red_cmd = &red_cmd1;
     pipe_cmd = &pipe_cmd1;
-    //chain_cmd = &chain_cmd1;
+    chain_cmd = &chain_cmd1;
     cmd->argc = 0;
     red_cmd->redirect_argc = 0;
     pipe_cmd->argl = 0;
     pipe_cmd->argr = 0;
-    //chain_cmd->chain_argc = 0;
 
     while (exit_flag != -1) {
         exit_flag = 0;
         int pipecommand = 0;
         int redirectcommand = 0;
+        int chaincommand = 0;
         printf("\n>>> ");
 
         read_input(cmd);
@@ -267,11 +269,13 @@ int main() {
         //multi_pipes();
 
         for (int i = 0; i < cmd->argc; i++) {
-            if ((strcmp(cmd->argv[i], "<") == 0 || strcmp(cmd->argv[i], ">") == 0) && strcmp(cmd->argv[i], "|") != 0) {
+            if ((strcmp(cmd->argv[i], "<") == 0 || strcmp(cmd->argv[i], ">") == 0) && (strcmp(cmd->argv[i], "|") != 0) && (strcmp(cmd->argv[i], ";") != 0)) {
                 redirectcommand++;
                 
             } else if (strcmp(cmd->argv[i], "|") == 0) {
                 pipecommand++;
+            } else if (strcmp(cmd->argv[i], ";") == 0) {
+                chaincommand++;
             }
         }
         if(redirectcommand>0) {
@@ -281,6 +285,10 @@ int main() {
         else if(pipecommand>0) {
                 parse_input(cmd, red_cmd, pipe_cmd);
                 pipes(pipe_cmd);
+        }
+        else if(chaincommand>0) {
+            printf("hello chain\n");
+            chains(cmd, chain_cmd);
         }
         else{
             exec_input(cmd);
