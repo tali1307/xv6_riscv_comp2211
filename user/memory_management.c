@@ -17,9 +17,8 @@ Align forceAlign;
 struct blockHeader *freeList = NULL; // start of free-list
 struct blockHeader base; // first block
 
-
 // creates new memory space if there aren't enough blocks of right size
-struct blockHeader* moremem(nbytes) {
+struct blockHeader* moremem(uint nbytes) {
     void *newAddress;
     struct blockHeader *newBlock;
 
@@ -27,7 +26,7 @@ struct blockHeader* moremem(nbytes) {
         nbytes = PAGE;
     }
 
-    newAddress = sbrk(nbytes * BLOCK_SIZE);
+    newAddress = sbrk(nbytes + BLOCK_SIZE);
 
     if(newAddress == (void *) -1) {  // if sbrk fails
         return NULL;
@@ -43,7 +42,7 @@ struct blockHeader* moremem(nbytes) {
 // _malloc() allocated nbytes bytes 
 void *_malloc(uint nbytes) {
 
-    struct blockHeader *currentBlock; // current and previous blocks
+    struct blockHeader *currentBlock;
     
     // case 1: no blocks yet in freeList, need to initialise
     if(freeList == NULL) {
@@ -53,33 +52,51 @@ void *_malloc(uint nbytes) {
         freeList = &base;
     }
 
-    currentBlock = freeList->nextBlock;
+    currentBlock = freeList;
 
     // case 2: look for free blocks
-    while(currentBlock != NULL && currentBlock->size >= nbytes) {
+    while(currentBlock->nextBlock != NULL && (currentBlock->size - nbytes) >= (BLOCK_SIZE + forceAlign)) {
         if(currentBlock->size == nbytes && currentBlock->available == TRUE) {
             currentBlock->available = FALSE;
             currentBlock = currentBlock->nextBlock;
+            freeList = currentBlock;
         }
         else if (currentBlock->available == TRUE) {
-           if((currentBlock->size - nbytes) > (BLOCK_SIZE + forceAlign)) {
-               struct blockHeader new_block; // adds new blocks if currentBlock has enough space for nybtes and a new block
-               new_block.size = currentBlock->size - (nbytes + BLOCK_SIZE + forceAlign);
-               currentBlock->size = nbytes;
-               currentBlock->available = FALSE;
-               new_block.available = TRUE;
-               currentBlock->nextBlock = &new_block;
-               freeList = currentBlock;
-           }
+            struct blockHeader new_block; // adds new blocks if currentBlock has enough space for nybtes and a new block
+            new_block.size = currentBlock->size - (nbytes + BLOCK_SIZE + forceAlign);
+            currentBlock->size = nbytes;
+            currentBlock->available = FALSE;
+            new_block.available = TRUE;
+            freeList = currentBlock;
+            currentBlock = &new_block;
         }
     }
 
     // case 3: no free blocks of right size
-    if(currentBlock->size < nbytes) {
+    if(currentBlock->size < nbytes && currentBlock->nextBlock == NULL) {
         currentBlock = moremem(nbytes); // extra memory created if nbytes < PAGE but it gets taken care of in case 2
+        if(currentBlock == NULL) {
+            return NULL;
+        }
     }
+    return freeList;
 }
 
 void _free(void *ptr) {
+    struct blockHeader *current;
+    current = freeList;
+
+    // merging adjacent free blocks
+    while(current->nextBlock != NULL) {
+        if(current->available == TRUE && current->nextBlock->available == TRUE) {
+            current->size = current->size + current->nextBlock->available + BLOCK_SIZE;
+            current = current->nextBlock;
+        }
+    }
+
 
 }
+
+
+
+
