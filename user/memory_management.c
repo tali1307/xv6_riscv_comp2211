@@ -67,8 +67,8 @@ void *_malloc(uint nbytes) {
             currentBlock->size = nbytes;
             currentBlock->available = FALSE;
             new_block.available = TRUE;
-            freeList = currentBlock;
             currentBlock = &new_block;
+            freeList = currentBlock;
         }
     }
 
@@ -83,17 +83,29 @@ void *_malloc(uint nbytes) {
 }
 
 void _free(void *ptr) {
-    struct blockHeader *current;
+    struct blockHeader *current, *new;
     current = freeList;
+    new = (struct blockHeader *) ptr;
 
     // merging adjacent free blocks
     while(current->nextBlock != NULL) {
         if(current->available == TRUE && current->nextBlock->available == TRUE) {
             current->size = current->size + current->nextBlock->available + BLOCK_SIZE;
             current = current->nextBlock;
+            freeList = current;
         }
     }
 
+    current = &base;
+    while(current != NULL) {
+        if(new->size == current->size) {
+            current->available = TRUE;
+            current->size = 0;
+            new = current;
+            freeList = current;
+            current = current->nextBlock;
+        }
+    }
 
 }
 
